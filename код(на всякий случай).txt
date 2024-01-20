@@ -1,0 +1,161 @@
+import pygame
+import sys
+import time
+import random
+
+pygame.init()
+clock = pygame.time.Clock()
+width, height = 510, 530
+screen = pygame.display.set_mode((width, height))
+pygame.display.set_caption("Flappy Bird")
+
+pole = pygame.image.load("pole.png")
+zemlya = pygame.image.load("zemlya.png")
+ptica_up = pygame.image.load("ptica_up.png")
+pnica_down = pygame.image.load("pnica_down.png")
+ptica_mid = pygame.image.load("ptica_mid.png")
+ptica = [ptica_up, ptica_mid, pnica_down]
+ptica_index = 0
+ptica_flap = pygame.K_SPACE
+nachalo = pygame.image.load("message.png")
+pygame.time.set_timer(ptica_flap, 200)
+
+ptica_cartinka = ptica[ptica_index]
+ptica_vokrug = ptica_cartinka.get_rect(center=(67, 530 // 2))
+dvizh_ptica = 0
+
+gravity = 0.25
+
+truba = pygame.image.load("truba.png")
+truba_height = [280, 350, 433, 490]
+
+trubs = []
+create_pipe = pygame.K_SPACE + 1
+pygame.time.set_timer(create_pipe, 1300)
+
+game_over = False
+over_img = pygame.image.load("gameover.png").convert_alpha()
+over_rect = over_img.get_rect(center=(width // 2, height // 2))
+
+schet = 0
+high_schet = 0
+schet_time = True
+schet_font = pygame.font.Font('freesansbold.ttf', 35)
+
+
+def sozd_trub():
+    pipe_y = random.choice(truba_height)
+    top_pipe = truba.get_rect(midbottom=(377, pipe_y - 210))
+    bottom_pipe = truba.get_rect(midtop=(377, pipe_y))
+    return top_pipe, bottom_pipe
+
+
+def truba_animation():
+    global game_over, schet_time
+    for pipe in trubs:
+        if pipe.top < 0:
+            flip_trub = pygame.transform.flip(truba, False, True)
+            screen.blit(flip_trub, pipe)
+        else:
+            screen.blit(truba, pipe)
+
+        pipe.centerx -= 3
+        if pipe.right < 0:
+            trubs.remove(pipe)
+
+        if ptica_vokrug.colliderect(pipe):
+            game_over = True
+
+
+def draw_schet(game_state):
+    if game_state == "game_on":
+        chisla = schet_font.render(str(schet), True, (0, 0, 0))
+        schet_rect = chisla.get_rect(center=(width // 2, 80))
+        screen.blit(chisla, schet_rect)
+    elif game_state == "game_over":
+        chisla = schet_font.render(f"Счет: {int(schet)}", True, (0, 0, 0))
+        schet_rect = chisla.get_rect(center=(width // 2, 80))
+        screen.blit(chisla, schet_rect)
+
+        high_score_text = schet_font.render(f"Лучший счет: {high_schet}", True, (0, 0, 0))
+        high_score_rect = high_score_text.get_rect(center=(width // 2, 450))
+        screen.blit(high_score_text, high_score_rect)
+
+
+def schet_update():
+    global schet, schet_time, high_schet
+    if trubs:
+        for pipe in trubs:
+            if 75 < pipe.centerx < 80 and schet_time:
+                schet += 0.5
+                schet_time = False
+            if pipe.left <= 0:
+                schet_time = True
+
+    if schet > high_schet:
+        high_schet = schet
+
+
+c = 0
+
+running = True
+while running:
+    clock.tick(125)
+
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+            sys.exit()
+
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_SPACE and not game_over:
+                dvizh_ptica = -6.5
+
+            if event.key == pygame.K_SPACE and game_over:
+                game_over = False
+                trubs = []
+                dvizh_ptica = 0
+                ptica_vokrug = ptica_cartinka.get_rect(center=(67, 622 // 2))
+                schet_time = True
+                schet = 0
+
+        if event.type == ptica_flap:
+            ptica_index += 1
+
+            if ptica_index > 2:
+                ptica_index = 0
+
+            ptica_cartinka = ptica[ptica_index]
+            ptica_vokrug = ptica_up.get_rect(center=ptica_vokrug.center)
+
+        if event.type == create_pipe:
+            trubs.extend(sozd_trub())
+
+    screen.blit(zemlya, (0, 460))
+    screen.blit(pole, (0, 0))
+
+    if not game_over:
+        dvizh_ptica += gravity
+        ptica_vokrug.centery += dvizh_ptica
+        rotated_bird = pygame.transform.rotozoom(ptica_cartinka, dvizh_ptica * -6, 1)
+
+        if ptica_vokrug.top < 5 or ptica_vokrug.bottom >= 550:
+            game_over = True
+
+        screen.blit(rotated_bird, ptica_vokrug)
+        truba_animation()
+        schet_update()
+        # welcome_screen()
+        draw_schet("game_on")
+    elif game_over:
+        screen.blit(over_img, over_rect)
+        draw_schet("game_over")
+
+    c -= 1
+    if c < -448:
+        c = 0
+
+    pygame.display.update()
+
+pygame.quit()
+sys.exit()
